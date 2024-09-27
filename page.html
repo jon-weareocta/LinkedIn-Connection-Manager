@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Connection Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0077B5;
+            --secondary-color: #00A0DC;
+            --background-color: #f3f2ef;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        li {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .tip {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            background-color: #e6f3ff;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .status-log {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
+            color: #555;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-log p {
+            margin: 0 0 5px 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .icon-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        @media (max-width: 600px) {
+            #app {
+                padding: 15px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>LinkedIn Connection Manager</h1>
+
+        <div class="section">
+            <h2>Profile Management</h2>
+            <div>
+                <label for="inputLinks">Add LinkedIn profiles:</label>
+                <input type="text" id="inputLinks" placeholder="Enter profile URLs separated by commas" />
+                <button id="addLinks" class="icon-button"><i class="fas fa-plus"></i> Add</button>
+            </div>
+            <h3>Added Profiles: <span id="profile-count">0 profile(s) added</span></h3>
+            <ul id="profile-list"></ul>
+        </div>
+
+        <div class="section">
+            <h2>Settings</h2>
+            <div>
+                <label for="maxLinks">Max links to collect per profile:</label>
+                <input type="number" id="maxLinks" min="1" value="2">
+                <button id="saveMaxLinks" class="icon-button"><i class="fas fa-save"></i> Save</button>
+            </div>
+            <div>
+                <label for="retryAttempts">Number of retry attempts:</label>
+                <input type="number" id="retryAttempts" min="1" max="10" value="3">
+                <button id="saveRetryAttempts" class="icon-button"><i class="fas fa-save"></i> Save</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Actions</h2>
+            <div class="button-group">
+                <button id="collectLinks" class="icon-button"><i class="fas fa-search"></i> Collect Links</button>
+                <button id="clearData" class="icon-button"><i class="fas fa-trash-alt"></i> Clear</button>
+                <button id="downloadCSV" class="icon-button"><i class="fas fa-file-csv"></i> Download CSV</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Process Control</h2>
+            <div class="button-group">
+                <button id="stopButton" class="icon-button"><i class="fas fa-stop"></i> Stop</button>
+                <button id="pauseButton" class="icon-button"><i class="fas fa-pause"></i> Pause</button>
+                <button id="continueButton" class="icon-button"><i class="fas fa-play"></i> Force Continue</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Message Template</h2>
+            <div class="template-selection">
+                <label for="templateSelect">Choose a template:</label>
+                <select id="templateSelect">
+                    <option value="custom">Custom Template</option>
+                    <option value="networking">Networking</option>
+                    <option value="jobInquiry">Job Inquiry</option>
+                    <option value="collaboration">Collaboration Proposal</option>
+                    <option value="eventFollowUp">Event Follow-up</option>
+                </select>
+            </div>
+            <textarea id="messageTemplate" rows="10" placeholder="Enter your message template here"></textarea>
+            <div class="tip">
+                <h4>Message Template Placeholders</h4>
+                <p>Enhance your message with dynamic content using these placeholders:</p>
+                <ul>
+                    <li><strong>{originConnectionName}</strong>: The full name of the connection that you want to get an intro from</li>
+                    <li><strong>{profileName}</strong>: The first name of the person you're messaging (the mutual connection)</li>
+                    <li><strong>{fullName}</strong>: The full name of the person you're messaging (the mutual connection)</li>
+                    <li><strong>{companyName}</strong>: The current company name of the connection you want to get an intro from</li>
+                    <li><strong>{jobTitle}</strong>: The current job title of the connection you want to get an intro from</li>
+                    <li><strong>{connectionLinkedInUrl}</strong>: The full LinkedIn profile URL of the connection you want to get an intro from</li>
+                </ul>
+                <p><strong>Note:</strong> Ensure your message complies with LinkedIn's terms of service and maintains a professional tone. Personalize the message by adding specific details relevant to each recipient.</p>
+            </div>
+            <button id="saveMessage" class="icon-button"><i class="fas fa-save"></i> Save Message</button>
+        </div>
+
+        <div class="section">
+            <h2>Status Log</h2>
+            <div class="status-log" id="statusLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Current Status</h2>
+            <p id="status"></p>
+        </div>
+    </div>
+
+    <!-- Modal Dialog -->
+    <div id="actionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="modalClose">&times;</span>
+            <h2>Action Complete: Links Collected</h2>
+            <p id="collectedLinksCount"></p>
+            <p>What would you like to do next?</p>
+            <div class="button-group">
+                <button id="modalSendMessages" class="icon-button"><i class="fas fa-paper-plane"></i> Send Messages</button>
+                <button id="downloadListButton" class="icon-button"><i class="fas fa-file-download"></i> Download List</button>
+                <button id="modalCollectMore" class="icon-button"><i class="fas fa-search-plus"></i> Collect More Links</button>
+            </div>
+            <div class="modal-info">
+                <p><strong>Send Messages:</strong> Automatically send personalized messages to collected connections.</p>
+                <p><strong>Download List:</strong> Export the collected connections as a CSV file for your records.</p>
+                <p><strong>Collect More Links:</strong> Continue collecting links from additional profiles.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/popup.js"></script>
+</body>
+</html>
