@@ -157,21 +157,26 @@ function logToBackground(message, data = null) {
     });
 }
 
-// Functions for parsing dates and checking recent messages
+// Add this parseLinkedInDate function before the wasMessageRecentlySent function
 const parseLinkedInDate = (dateString) => {
   const now = new Date();
   const currentYear = now.getFullYear();
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   
-  if (dateString.includes(':')) {
-    // Today's date
-    const [time] = dateString.split(' ');
-    const [hours, minutes] = time.split(':');
-    return new Date(currentYear, now.getMonth(), now.getDate(), hours, minutes);
-  } else if (dateString === 'Yesterday') {
+  if (dateString.toLowerCase().includes('today')) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (dateString.toLowerCase().includes('yesterday')) {
     return new Date(now.setDate(now.getDate() - 1));
+  } else if (weekdays.some(day => dateString.includes(day))) {
+    const dayIndex = weekdays.findIndex(day => dateString.includes(day));
+    const today = now.getDay();
+    const daysAgo = (today + 7 - dayIndex) % 7;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+  } else if (dateString.includes(':')) {
+    const [hours, minutes] = dateString.split(':').map(Number);
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
   } else {
-    // Format: "Sep 30" or "Sep 30, 2022"
     const parts = dateString.split(' ');
     const month = months.indexOf(parts[0]);
     const day = parseInt(parts[1]);
@@ -180,39 +185,39 @@ const parseLinkedInDate = (dateString) => {
   }
 };
 
-// Updated wasMessageRecentlySent function
-function wasMessageRecentlySent() {
-  logToBackground('Checking for recent messages');
-  
-  const timeHeadings = document.querySelectorAll(SELECTORS.LAST_MESSAGE_TIMESTAMP);
-  
-  if (timeHeadings.length > 0) {
-    const mostRecentTimeHeading = timeHeadings[timeHeadings.length - 1];
-    const relativeTime = mostRecentTimeHeading.textContent.trim();
-    logToBackground(`Most recent time heading: ${relativeTime}`);
+// Update the existing wasMessageRecentlySent function
+const wasMessageRecentlySent = async () => {
+    logToBackground('Checking for recent messages');
     
-    const lastMessageDate = parseLinkedInDate(relativeTime);
+    const timeHeadings = document.querySelectorAll(SELECTORS.LAST_MESSAGE_TIMESTAMP);
     
-    if (lastMessageDate) {
-      const currentDate = new Date();
-      const timeDifference = currentDate - lastMessageDate;
-      const daysDifference = timeDifference / (1000 * 60 * 60 * 24);
-      
-      logToBackground(`Last message date: ${lastMessageDate.toDateString()}`);
-      logToBackground(`Days since last message: ${daysDifference.toFixed(2)}`);
-      
-      if (daysDifference < 90) {
-        logToBackground('A message was sent within the last 90 days');
-        return true;
-      }
-    } else {
-      logToBackground(`Unable to parse date: ${relativeTime}`);
+    if (timeHeadings.length > 0) {
+        const mostRecentTimeHeading = timeHeadings[timeHeadings.length - 1];
+        const relativeTime = mostRecentTimeHeading.textContent.trim();
+        logToBackground(`Most recent time heading: ${relativeTime}`);
+        
+        const lastMessageDate = parseLinkedInDate(relativeTime);
+        
+        if (lastMessageDate && !isNaN(lastMessageDate.getTime())) {
+            const currentDate = new Date();
+            const timeDifference = currentDate - lastMessageDate;
+            const daysDifference = timeDifference / (1000 * 60 * 60 * 24);
+            
+            logToBackground(`Last message date: ${lastMessageDate.toDateString()}`);
+            logToBackground(`Days since last message: ${daysDifference.toFixed(2)}`);
+            
+            if (daysDifference < 90) {
+                logToBackground('A message was sent within the last 90 days');
+                return true;
+            }
+        } else {
+            logToBackground(`Unable to parse date: ${relativeTime}`);
+        }
     }
-  }
-  
-  logToBackground('No messages found within the last 90 days');
-  return false;
-}
+    
+    logToBackground('No messages found within the last 90 days');
+    return false;
+};
 
 // Updated closeAllMessagePanels function
 const closeAllMessagePanels = async () => {
@@ -245,15 +250,9 @@ const closeAllMessagePanels = async () => {
     logToBackground(`Final check: ${finalCheck.length} panels remaining.`);
 };
 
-// Update the sendMessage function to use the new wasMessageRecentlySent check
+// Update the sendMessage function to use the updated wasMessageRecentlySent
 const sendMessage = async (data) => {
     logToBackground('Starting sendMessage function');
-
-    // Check if a message was sent recently
-    if (wasMessageRecentlySent()) {
-        logToBackground('A message was sent within the last 90 days. Skipping this contact.');
-        return "Skipped";
-    }
 
     // First, try to find and click the "Message" button
     const messageButton = await waitForElm(SELECTORS.MESSAGE_BUTTON, 10000);
@@ -264,6 +263,13 @@ const sendMessage = async (data) => {
     } else {
         logToBackground('Message button not found');
         return "Failed";
+    }
+
+    // Check if a message was sent recently after opening the panel
+    if (await wasMessageRecentlySent()) {
+        logToBackground('A message was sent within the last 90 days. Skipping this contact.');
+        await closeMessagePanel();
+        return "Skipped";
     }
 
     // Now look for the message input
