@@ -2,7 +2,7 @@
 
 // This script runs in the background and manages the core functionality of the extension
 
-// Constants
+// Constants for default values and storage keys
 const DEFAULT_MAX_LINKS = 2;
 const LINKEDIN_404_URL = "https://www.linkedin.com/404/";
 const STORAGE_KEYS = {
@@ -11,9 +11,7 @@ const STORAGE_KEYS = {
   MESSAGE_TEMPLATE: "messageTemplate"
 };
 
-// Helper functions
-
-// Validates if a given string is a valid URL
+// Helper functions for URL validation, tab management, and storage operations
 const isValidUrl = (urlString) => {
   try {
     return Boolean(new URL(urlString));
@@ -22,7 +20,6 @@ const isValidUrl = (urlString) => {
   }
 };
 
-// Waits for a specific tab to finish loading
 const waitForTabToLoad = (targetTabId) => new Promise((resolve, reject) => {
   const handleTabUpdate = (tabId, changeInfo, tab) => {
     if (tabId === targetTabId && changeInfo.status === 'complete') {
@@ -39,7 +36,6 @@ const waitForTabToLoad = (targetTabId) => new Promise((resolve, reject) => {
   }, 30000); // 30 seconds timeout
 });
 
-// Check if a tab exists
 const tabExists = async (tabId) => {
   try {
     await chrome.tabs.get(tabId);
@@ -49,42 +45,35 @@ const tabExists = async (tabId) => {
   }
 };
 
-// Safely remove a tab
 const safelyRemoveTab = async (tabId) => {
   if (await tabExists(tabId)) {
     await chrome.tabs.remove(tabId);
   }
 };
 
-// Storage functions
-
-// Retrieves a value from Chrome storage
+// Storage functions for managing profile links and targets
 const getFromStorage = async (key) => {
   const result = await chrome.storage.local.get([key]);
   return result[key];
 };
 
-// Saves a value to Chrome storage
 const setInStorage = async (key, value) => {
   await chrome.storage.local.set({ [key]: value });
 };
 
-// Gets the list of user profile links
+// Functions for managing user profiles and target profiles
 const getProfiles = async () => {
   return await getFromStorage(STORAGE_KEYS.USER_PROFILE_LINKS) || [];
 };
 
-// Saves the list of user profile links
 const saveProfiles = async (profileLinks) => {
   await setInStorage(STORAGE_KEYS.USER_PROFILE_LINKS, profileLinks);
 };
 
-// Gets the list of target profiles
 const getTargets = async () => {
   return [...new Set(await getFromStorage(STORAGE_KEYS.TARGET_PROFILES) || [])];
 };
 
-// Saves a target profile
 const saveTarget = async (target) => {
   let existingTargets = await getTargets();
   if (!existingTargets.find(t => t.connection.url === target.connection.url)) {
@@ -92,16 +81,13 @@ const saveTarget = async (target) => {
   }
 };
 
-// Removes a target profile
 const removeTarget = async (targetUrl) => {
   let existingTargets = await getTargets();
   existingTargets = existingTargets.filter(target => target.connection.url !== targetUrl);
   await setInStorage(STORAGE_KEYS.TARGET_PROFILES, existingTargets);
 };
 
-// Main functionality
-
-// Collects connections from a given URL
+// Main functionality for collecting connections and sending messages
 const collectConnections = async (connectionsUrl, maxLinks, originProfileUrl) => {
   let allConnections = [];
   let connectionsTab;
@@ -129,7 +115,6 @@ const collectConnections = async (connectionsUrl, maxLinks, originProfileUrl) =>
   return allConnections;
 };
 
-// Gets connection links for a given profile
 const getConnectionsLinks = async (profile, maxLinks) => {
   let tab;
   
@@ -178,9 +163,7 @@ const getConnectionsLinks = async (profile, maxLinks) => {
   }
 };
 
-// Message handlers
-
-// Handles the collection of links
+// Message handlers for various extension operations
 const collectLinksHandler = async (message) => {
   console.log("Starting collectLinksHandler");
   const profiles = await getProfiles();
@@ -204,7 +187,6 @@ const collectLinksHandler = async (message) => {
   chrome.runtime.sendMessage({ type: "collection-complete", count: collectedLinksCount });
 };
 
-// Handles adding new links
 const addLinkHandler = async (message) => {
   console.log("Starting addLinkHandler");
   const profiles = await getProfiles();
@@ -216,16 +198,6 @@ const addLinkHandler = async (message) => {
   return "Done";
 };
 
-// Enhanced logging function
-function log(message, data = null) {
-  const logMessage = `[${new Date().toISOString()}] ${message}`;
-  console.log(logMessage);
-  if (data) {
-    console.log(JSON.stringify(data, null, 2));
-  }
-}
-
-// Handles sending messages to collected connections
 const sendMessagesHandler = async (messageTemplate) => {
   log("Starting sendMessagesHandler");
   let targets = await getTargets();
@@ -307,10 +279,19 @@ const sendMessagesHandler = async (messageTemplate) => {
   await chrome.storage.local.clear();
 };
 
+// Enhanced logging function
+function log(message, data = null) {
+  const logMessage = `[${new Date().toISOString()}] ${message}`;
+  console.log(logMessage);
+  if (data) {
+    console.log(JSON.stringify(data, null, 2));
+  }
+}
+
 // State variables
 let isPaused = false;
 
-// Message listener
+// Message listener for handling various message types
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   log("Received message:", message);
   (async () => {

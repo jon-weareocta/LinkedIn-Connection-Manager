@@ -1,6 +1,8 @@
 // content-script.js
 
-// Constants
+// This script runs in the context of LinkedIn web pages and interacts with the page content
+
+// Constants for DOM selectors and timeouts
 const SELECTORS = {
   CONNECTIONS_BUTTON: ".artdeco-button.artdeco-button--2.artdeco-button--primary.ember-view.pvs-profile-actions__action",
   CONNECTIONS_LINK: 'a[href^="https://www.linkedin.com/search/results/people/?facetNetwork"]',
@@ -21,7 +23,7 @@ const TIMEOUTS = {
   CLOSE_MESSAGE: 4000
 };
 
-// Helper functions
+// Helper functions for interacting with the DOM
 const waitForElm = (selector, timeout = TIMEOUTS.ELEMENT_WAIT) => {
   return new Promise((resolve) => {
     const element = document.querySelector(selector);
@@ -93,7 +95,7 @@ const waitForElementDisappear = (selector, timeout = TIMEOUTS.ELEMENT_WAIT) => {
   });
 };
 
-// Main functionality
+// Functions for extracting data from LinkedIn pages
 const getCompanyName = () => {
   const buttons = document.querySelectorAll("button");
   for (const button of buttons) {
@@ -143,7 +145,7 @@ const loadConnectionsAjax = async (pageNumber) => {
   };
 };
 
-// Helper function to send logs to the background script
+// Helper function for logging to the background script
 function logToBackground(message, data = null) {
     const logMessage = `[Content Script] ${message}`;
     chrome.runtime.sendMessage({ 
@@ -153,6 +155,7 @@ function logToBackground(message, data = null) {
     });
 }
 
+// Functions for parsing dates and checking recent messages
 function parseLinkedInDate(dateString) {
     const now = new Date();
     const year = now.getFullYear();
@@ -179,7 +182,6 @@ function parseLinkedInDate(dateString) {
     return null;
 }
 
-// Function to check if a message was recently sent
 function wasMessageRecentlySent() {
     logToBackground('Checking for recent messages');
     
@@ -202,7 +204,7 @@ function wasMessageRecentlySent() {
     return false;
 }
 
-// Sends a message to a connection
+// Function for sending messages to connections
 const sendMessage = async (data) => {
     logToBackground(`Starting sendMessage function for ${data.firstName}`, data);
 
@@ -251,8 +253,11 @@ const sendMessage = async (data) => {
         if (closeButton) {
             logToBackground('Closing message panel');
             closeButton.click();
+            console.log('Message panel closed due to recent message'); // New console log
+            logToBackground('Message panel closed due to recent message'); // New log to background
         } else {
             logToBackground('Close button not found');
+            console.log('Failed to close message panel: Close button not found'); // New console log
         }
         return "Skipped";
     }
@@ -303,7 +308,7 @@ const sendMessage = async (data) => {
     });
 };
 
-// Verify if the message was actually sent
+// Function to verify if a message was sent successfully
 const verifyMessageSent = () => {
     if (wasMessageRecentlySent()) {
         const sentMessages = document.querySelectorAll('.msg-s-event-listitem__message-bubble');
@@ -315,7 +320,7 @@ const verifyMessageSent = () => {
     return { success: false, reason: "Sent message not found in conversation" };
 };
 
-// Message listener
+// Message listener for handling requests from the background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     logToBackground(`Received message: ${JSON.stringify(request)}`);
     (async () => {
@@ -351,4 +356,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
+// Log message indicating successful initialization
 logToBackground("Content script loaded and initialized");

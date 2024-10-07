@@ -362,41 +362,68 @@ function getTemplateContent(templateName) {
     const templates = {
         networking: `Hi {profileName},
 
-I hope this message finds you well. I noticed we're both connected to {originConnectionName}, and I'm reaching out because their experience at {companyName} caught my attention.
+I noticed we're both connected to {originConnectionName} at {companyName}. Their experience in [specific field] caught my attention.
 
-I'm particularly interested in learning more about [specific area of interest]. Would you be open to introducing me to {originConnectionName}? I'd love to have a brief conversation about their insights in this field.
+I'm keen to learn more about [specific topic]. Would you mind connecting me with {originConnectionName}? I'd appreciate a brief chat about their insights.
 
-Looking forward to your response,
+Thanks for considering,
 [Your Name]`,
-        jobInquiry: `Dear {fullName},
 
-I hope you're having a great day. I came across {originConnectionName}'s profile, who is currently working as {jobTitle} at {companyName}, and I'm really impressed by their role.
+        jobInquiry: `Hello {fullName},
 
-I'm currently exploring new opportunities in [specific industry/role], and I'd be grateful if you could introduce me to {originConnectionName}. I'd love to gain some insights about [specific aspect of the job or company].
+I hope this message finds you well. I came across {originConnectionName}'s profile at {companyName}, and their role as {jobTitle} intrigues me.
 
-Would you be open to making an introduction?
+I'm exploring opportunities in [specific industry/role] and wonder if you could facilitate an introduction to {originConnectionName}? I'd value their perspective on [specific aspect of the job or company].
 
-Thank you for your time,
-[Your Name]`,
-        collaboration: `Hello {profileName},
-
-I hope this message finds you well. I've been following {originConnectionName}'s contributions at {companyName} with great interest.
-
-I'm reaching out because I believe there might be an opportunity for collaboration between our organizations in [specific area]. I'd love to discuss this further with {originConnectionName} and explore how we might be able to work together.
-
-Would you be willing to introduce me to {originConnectionName}?
+I appreciate any help you can offer.
 
 Best regards,
 [Your Name]`,
-        eventFollowUp: `Hi {profileName},
 
-I hope you're doing well. I recently noticed that {originConnectionName} from {companyName} attended [Event Name], and while I didn't get a chance to connect with them personally, I'm fascinated by the work they're doing.
+        collaboration: `Hi {profileName},
 
-I'm particularly intrigued by [specific aspect of their work or a topic from the event]. I'd love to hear their thoughts on this and perhaps discuss how it relates to current trends in our industry.
+{originConnectionName}'s work at {companyName} in [specific area] aligns closely with some projects we're developing.
 
-Would you be open to introducing me to {originConnectionName} for a short conversation to share insights?
+Would you be open to introducing us? I believe a conversation could uncover some interesting collaborative opportunities.
 
-Best wishes,
+Thank you for your consideration,
+[Your Name]`,
+
+        eventFollowUp: `Hello {profileName},
+
+I noticed {originConnectionName} from {companyName} attended [Event Name]. While we didn't connect there, their involvement in [specific topic] caught my attention.
+
+Could you introduce us? I'm eager to discuss [specific aspect] and how it relates to current industry trends.
+
+I appreciate your help in making this connection.
+
+Warm regards,
+[Your Name]`,
+
+        newCompany: `Hi {profileName},
+
+I hope this message finds you well. I recently noticed that you're connected with {originConnectionName} from {companyName}, and I thought you might be interested in some exciting news.
+
+I've just launched a new company, [Your Company Name], focusing on [brief description of your company's focus]. Given {originConnectionName}'s expertise in [relevant field], I believe they could offer valuable insights as we grow.
+
+Would you be willing to introduce me to {originConnectionName}? I'd love to share more about our venture and potentially explore ways we could collaborate or benefit from their experience.
+
+Thank you for considering this request. I look forward to potentially connecting with {originConnectionName} through you.
+
+Best regards,
+[Your Name]`,
+
+        offeringService: `Hello {profileName},
+
+I hope you're doing well. I noticed you're connected with {originConnectionName} at {companyName}, and I believe I have a service that could be valuable to them.
+
+My company, [Your Company Name], specializes in [brief description of your service]. We've had great success helping businesses like {companyName} to [brief benefit of your service].
+
+I was wondering if you'd be comfortable introducing me to {originConnectionName}? I'd love the opportunity to discuss how our services could potentially benefit their work at {companyName}.
+
+I appreciate your time and consideration. If you'd like more information about what we do before making an introduction, I'd be happy to provide it.
+
+Thank you in advance,
 [Your Name]`
     };
 
