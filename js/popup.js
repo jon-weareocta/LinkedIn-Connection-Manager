@@ -362,68 +362,56 @@ function getTemplateContent(templateName) {
     const templates = {
         networking: `Hi {profileName},
 
-I noticed we're both connected to {originConnectionName} ({originLinkedInUrl}) at {companyName}. Their experience in [specific field] caught my attention.
+Hope you're well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask a quick favor. I'm currently working on expanding my professional network in the {jobTitle} field, particularly in companies like {companyName}.
 
-I'm keen to learn more about [specific topic]. Would you mind connecting me with {originConnectionName}? I'd appreciate a brief chat about their insights.
+Would you be open to introducing us? I believe a conversation with {originConnectionName} could provide valuable insights into the industry.
 
-Thanks for considering,
+Thanks in advance!
 [Your Name]`,
 
-        jobInquiry: `Hello {fullName},
+        jobInquiry: `Hi {profileName},
 
-I hope this message finds you well. I came across {originConnectionName}'s profile at {companyName}, and their role as {jobTitle} intrigues me.
+Hope this message finds you well. I saw that you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to reach out for a small favor. I'm exploring new career opportunities in the {jobTitle} role, and {originConnectionName}'s experience at {companyName} really caught my attention.
 
-I'm exploring opportunities in [specific industry/role] and wonder if you could facilitate an introduction to {originConnectionName}? I'd value their perspective on [specific aspect of the job or company].
+Would you be willing to introduce us? I'm keen to learn more about their journey and potentially explore any opportunities at {companyName}.
 
-I appreciate any help you can offer.
-
-Best regards,
+Thank you for considering my request!
 [Your Name]`,
 
         collaboration: `Hi {profileName},
 
-{originConnectionName}'s work at {companyName} in [specific area] aligns closely with some projects we're developing.
+I hope you're doing well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for your help. My team is working on an innovative project in the field of {jobTitle}, and we believe {originConnectionName}'s expertise at {companyName} could be invaluable.
 
-Would you be open to introducing us? I believe a conversation could uncover some interesting collaborative opportunities.
+Would you be open to introducing us? I think there could be some exciting collaboration opportunities to explore.
 
-Thank you for your consideration,
+Thanks so much for your consideration!
 [Your Name]`,
 
-        eventFollowUp: `Hello {profileName},
+        eventFollowUp: `Hi {profileName},
 
-I noticed {originConnectionName} from {companyName} attended [Event Name]. While we didn't connect there, their involvement in [specific topic] caught my attention.
+I hope this message finds you well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask a quick favor. I recently attended [Event Name] and learned about the great work {originConnectionName} is doing as a {jobTitle} at {companyName}.
 
-Could you introduce us? I'm eager to discuss [specific aspect] and how it relates to current industry trends.
+Would you be willing to introduce us? I'm eager to discuss some of the insights shared at the event and explore potential synergies.
 
-I appreciate your help in making this connection.
-
-Warm regards,
+Thank you in advance for your help!
 [Your Name]`,
 
         newCompany: `Hi {profileName},
 
-I hope this message finds you well. I recently noticed that you're connected with {originConnectionName} from {companyName}, and I thought you might be interested in some exciting news.
+Hope you're doing well. I saw that you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for a small favor. I've recently launched a new company that's focused on [brief description], and given {originConnectionName}'s experience as a {jobTitle} at {companyName}, I believe their insights could be extremely valuable.
 
-I've just launched a new company, [Your Company Name], focusing on [brief description of your company's focus]. Given {originConnectionName}'s expertise in [relevant field], I believe they could offer valuable insights as we grow.
+Would you be open to introducing us? I'd love to share more about our venture and explore how we might add value to their work.
 
-Would you be willing to introduce me to {originConnectionName}? I'd love to share more about our venture and potentially explore ways we could collaborate or benefit from their experience.
-
-Thank you for considering this request. I look forward to potentially connecting with {originConnectionName} through you.
-
-Best regards,
+Thanks so much for considering this!
 [Your Name]`,
 
-        offeringService: `Hello {profileName},
+        offeringService: `Hi {profileName},
 
-I hope you're doing well. I noticed you're connected with {originConnectionName} at {companyName}, and I believe I have a service that could be valuable to them.
+I hope this message finds you well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for your help. My company has developed a service that's particularly beneficial for {jobTitle} professionals, and I believe it could add significant value to {originConnectionName}'s work at {companyName}.
 
-My company, [Your Company Name], specializes in [brief description of your service]. We've had great success helping businesses like {companyName} to [brief benefit of your service].
+Would you be willing to introduce us? I'd love the opportunity to discuss how we might be able to support their efforts.
 
-I was wondering if you'd be comfortable introducing me to {originConnectionName}? I'd love the opportunity to discuss how our services could potentially benefit their work at {companyName}.
-
-I appreciate your time and consideration. If you'd like more information about what we do before making an introduction, I'd be happy to provide it.
-
-Thank you in advance,
+Thank you in advance for your consideration!
 [Your Name]`
     };
 
