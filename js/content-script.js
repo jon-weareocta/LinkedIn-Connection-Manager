@@ -204,22 +204,43 @@ function wasMessageRecentlySent() {
     return false;
 }
 
+// Updated closeAllMessagePanels function
+const closeAllMessagePanels = async () => {
+    logToBackground('Attempting to close all message panels');
+    const messagePanels = document.querySelectorAll('.msg-overlay-conversation-bubble');
+    logToBackground(`Found ${messagePanels.length} message panels`);
+    
+    for (const panel of messagePanels) {
+        logToBackground('Searching for close button in panel');
+        const svgUse = panel.querySelector("button > svg > use[href='#close-small']");
+        if (svgUse) {
+            const closeButton = svgUse.closest('button');
+            if (closeButton) {
+                logToBackground('Close button found. Clicking it.');
+                closeButton.click();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second after each click
+            } else {
+                logToBackground('Close button not found');
+            }
+        } else {
+            logToBackground('SVG use element not found');
+        }
+    }
+    
+    // Wait for panels to disappear
+    await waitForElementDisappear('.msg-overlay-conversation-bubble', 15000);
+    
+    // Final check
+    const finalCheck = document.querySelectorAll('.msg-overlay-conversation-bubble');
+    logToBackground(`Final check: ${finalCheck.length} panels remaining.`);
+};
+
 // Function for sending messages to connections
 const sendMessage = async (data) => {
     logToBackground(`Starting sendMessage function for ${data.firstName}`, data);
 
-    logToBackground('Checking for open message panels');
-    const openPanels = document.querySelectorAll(".msg-overlay-bubble-header__details");
-    if (openPanels.length > 0) {
-        logToBackground(`Found ${openPanels.length} open panels. Closing them.`);
-        openPanels.forEach((panel) => {
-            panel.querySelector(".msg-overlay-bubble-header__control")?.click();
-        });
-        await waitForElementDisappear(".msg-overlay-bubble-header__details");
-        logToBackground('All open panels closed');
-    } else {
-        logToBackground('No open panels found');
-    }
+    // Close any existing message panels before starting
+    await closeAllMessagePanels();
 
     logToBackground('Looking for send message button');
     const sendButton = await waitForElm(SELECTORS.CONNECTIONS_BUTTON);
@@ -249,16 +270,7 @@ const sendMessage = async (data) => {
             reason: "Recent message",
             lastMessageDate: new Date().toLocaleDateString()
         });
-        const closeButton = document.querySelector(SELECTORS.CLOSE_BUTTON)?.closest('button');
-        if (closeButton) {
-            logToBackground('Closing message panel');
-            closeButton.click();
-            console.log('Message panel closed due to recent message'); // New console log
-            logToBackground('Message panel closed due to recent message'); // New log to background
-        } else {
-            logToBackground('Close button not found');
-            console.log('Failed to close message panel: Close button not found'); // New console log
-        }
+        await closeAllMessagePanels();
         return "Skipped";
     }
 
@@ -278,32 +290,34 @@ const sendMessage = async (data) => {
     logToBackground('Message content inserted');
 
     return new Promise((resolve) => {
-        setTimeout(() => {
+        setTimeout(async () => {
             logToBackground('Clicking send button');
             const sendButton = document.querySelector(SELECTORS.SEND_BUTTON);
             if (sendButton) {
                 sendButton.click();
                 logToBackground('Send button clicked');
                 
-                setTimeout(() => {
-                    if (wasMessageRecentlySent()) {
-                        logToBackground(`Message sent to ${data.firstName}`);
-                        chrome.runtime.sendMessage({ 
-                            type: "message-sent", 
-                            recipient: data.firstName,
-                            date: new Date().toLocaleDateString()
-                        });
-                        resolve("Done");
-                    } else {
-                        logToBackground("Message not found after sending. Logging current DOM:");
-                        logToBackground(document.body.innerHTML);
-                        resolve("Failed");
-                    }
-                }, 5000); // Increased wait time to 5 seconds
+                if (wasMessageRecentlySent()) {
+                    logToBackground(`Message sent to ${data.firstName}`);
+                    chrome.runtime.sendMessage({ 
+                        type: "message-sent", 
+                        recipient: data.firstName,
+                        date: new Date().toLocaleDateString()
+                    });
+                    await closeAllMessagePanels();
+                    resolve("Done");
+                } else {
+                    logToBackground("Message not found after sending. Logging current DOM:");
+                    logToBackground(document.body.innerHTML);
+                    await closeAllMessagePanels();
+                    resolve("Failed");
+                }
             } else {
                 logToBackground("Send button not found");
                 resolve("Failed");
             }
+            // Close panels after sending or if failed
+            await closeAllMessagePanels();
         }, TIMEOUTS.SEND_MESSAGE);
     });
 };
@@ -358,3 +372,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Log message indicating successful initialization
 logToBackground("Content script loaded and initialized");
+
+// Add this function to periodically clean up message panels
+const periodicCleanup = async () => {
+    await closeAllMessagePanels();
+    setTimeout(periodicCleanup, 60000); // Run every minute
+};
+
+// Start the periodic cleanup
+periodicCleanup();
