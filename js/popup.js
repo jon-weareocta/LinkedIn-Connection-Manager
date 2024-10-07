@@ -362,7 +362,7 @@ function getTemplateContent(templateName) {
     const templates = {
         networking: `Hi {profileName},
 
-I noticed we're both connected to {originConnectionName} at {companyName}. Their experience in [specific field] caught my attention.
+I noticed we're both connected to {originConnectionName} ({originLinkedInUrl}) at {companyName}. Their experience in [specific field] caught my attention.
 
 I'm keen to learn more about [specific topic]. Would you mind connecting me with {originConnectionName}? I'd appreciate a brief chat about their insights.
 

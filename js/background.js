@@ -101,6 +101,12 @@ const collectConnections = async (connectionsUrl, maxLinks, originProfileUrl) =>
       allConnections = connections.connections.slice(0, maxLinks);
       allConnections = [...new Set(allConnections.map(connection => connection.url))]
         .map(url => allConnections.find(connection => connection.url === url));
+      
+      // Add the origin profile URL to each connection
+      allConnections = allConnections.map(connection => ({
+        ...connection,
+        originUrl: originProfileUrl
+      }));
     } else {
       console.log("Profile not found. Skipping to the next profile.");
     }
@@ -141,10 +147,10 @@ const getConnectionsLinks = async (profile, maxLinks) => {
       const profileConnections = await collectConnections(connectionsMeta.connectionsLink, maxLinks, profile);
       const targets = profileConnections.map(connection => ({
         origin: connectionsMeta.profileName,
+        originUrl: profile, // This is the LinkedIn URL of the original connection
         connection: {
           name: connection.name,
-          url: connection.url,
-          originUrl: profile
+          url: connection.url
         },
         companyName: connectionsMeta.companyName,
         status: 'Pending'
@@ -231,6 +237,7 @@ const sendMessagesHandler = async (messageTemplate) => {
 
       const messageData = {
         originFullName: target.origin,
+        originLinkedInUrl: target.connection.originUrl, // Change this line
         firstName: target.connection.name.split(' ')[0],
         fullName: target.connection.name,
         companyName: target.companyName || "Unknown",
@@ -238,6 +245,8 @@ const sendMessagesHandler = async (messageTemplate) => {
         connectionLinkedInUrl: target.connection.url,
         messageTemplate: messageTemplate
       };
+
+      log(`Prepared message data for ${target.connection.name}:`, messageData);
 
       log(`Sending message to content script for ${target.connection.name}`, messageData);
 

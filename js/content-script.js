@@ -303,6 +303,7 @@ const sendMessage = async (data) => {
     // Prepare message content
     const messageContent = data.messageTemplate
         .replace('{originConnectionName}', data.originFullName)
+        .replace('{originLinkedInUrl}', data.originLinkedInUrl || 'URL not available')
         .replace('{profileName}', data.firstName)
         .replace('{fullName}', data.fullName)
         .replace('{companyName}', data.companyName)
