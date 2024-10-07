@@ -323,7 +323,7 @@ const sendMessage = async (data) => {
         inputElement.dispatchEvent(inputEvent);
         
         // Small delay between "keystrokes"
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 5));
     }
     logToBackground('Message content inserted');
 
