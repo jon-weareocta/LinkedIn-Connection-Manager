@@ -1,7 +1,5 @@
 // content-script.js
 
-// This script runs in the context of LinkedIn web pages and interacts with the page content
-
 // Constants for DOM selectors and timeouts
 const SELECTORS = {
   CONNECTIONS_BUTTON: ".artdeco-button.artdeco-button--2.artdeco-button--primary.ember-view.pvs-profile-actions__action",
@@ -12,9 +10,13 @@ const SELECTORS = {
   CONNECTION_LINK: 'span.entity-result__title-text>a[href^="https://www.linkedin.com/in/"]',
   MESSAGE_PANEL: ".msg-form__contenteditable",
   SEND_BUTTON: ".msg-form__send-button",
-  CLOSE_BUTTON: 'use[href="#close-small"]',
+  CLOSE_BUTTON: "button > svg > use[href='#close-small']",
   CONVERSATION_CONTAINER: '.msg-conversations-container__conversations-list',
-  LAST_MESSAGE_TIMESTAMP: '.msg-s-message-list__time-heading'
+  LAST_MESSAGE_TIMESTAMP: '.msg-s-message-list__time-heading',
+  MESSAGE_BUTTON: "button[aria-label^='Message']",
+  MESSAGE_INPUT: ".msg-form__contenteditable[contenteditable='true']",
+  MESSAGE_BUBBLE: '.msg-s-event-listitem__message-bubble',
+  EDITOR_CONTAINER: ".msg-form__msg-content-container"
 };
 
 const TIMEOUTS = {
@@ -26,20 +28,20 @@ const TIMEOUTS = {
 // Helper functions for interacting with the DOM
 const waitForElm = (selector, timeout = TIMEOUTS.ELEMENT_WAIT) => {
   return new Promise((resolve) => {
-    const element = document.querySelector(selector);
-    if (element) return resolve(element);
+    if (document.querySelector(selector)) {
+      return resolve(document.querySelector(selector));
+    }
 
-    const observer = new MutationObserver((mutations) => {
-      const elementFound = document.querySelector(selector);
-      if (elementFound) {
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(selector)) {
+        resolve(document.querySelector(selector));
         observer.disconnect();
-        resolve(elementFound);
       }
     });
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
 
     setTimeout(() => {
@@ -156,52 +158,60 @@ function logToBackground(message, data = null) {
 }
 
 // Functions for parsing dates and checking recent messages
-function parseLinkedInDate(dateString) {
-    const now = new Date();
-    const year = now.getFullYear();
+const parseLinkedInDate = (dateString) => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  if (dateString.includes(':')) {
+    // Today's date
+    const [time] = dateString.split(' ');
+    const [hours, minutes] = time.split(':');
+    return new Date(currentYear, now.getMonth(), now.getDate(), hours, minutes);
+  } else if (dateString === 'Yesterday') {
+    return new Date(now.setDate(now.getDate() - 1));
+  } else {
+    // Format: "Sep 30" or "Sep 30, 2022"
+    const parts = dateString.split(' ');
+    const month = months.indexOf(parts[0]);
+    const day = parseInt(parts[1]);
+    const year = parts[2] ? parseInt(parts[2]) : currentYear;
+    return new Date(year, month, day);
+  }
+};
 
-    if (dateString === 'Today') {
-        return now;
-    }
-
-    if (dateString.startsWith('Yesterday')) {
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        return yesterday;
-    }
-
-    // Handle "Jul 2" format
-    const monthMatch = dateString.match(/(\w{3})\s(\d{1,2})/);
-    if (monthMatch) {
-        const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(monthMatch[1]);
-        const day = parseInt(monthMatch[2], 10);
-        return new Date(year, month, day);
-    }
-
-    logToBackground(`Unable to parse date: ${dateString}`);
-    return null;
-}
-
+// Updated wasMessageRecentlySent function
 function wasMessageRecentlySent() {
-    logToBackground('Checking for recent messages');
+  logToBackground('Checking for recent messages');
+  
+  const timeHeadings = document.querySelectorAll(SELECTORS.LAST_MESSAGE_TIMESTAMP);
+  
+  if (timeHeadings.length > 0) {
+    const mostRecentTimeHeading = timeHeadings[timeHeadings.length - 1];
+    const relativeTime = mostRecentTimeHeading.textContent.trim();
+    logToBackground(`Most recent time heading: ${relativeTime}`);
     
-    const timeHeadings = document.querySelectorAll(SELECTORS.LAST_MESSAGE_TIMESTAMP);
-    if (timeHeadings.length > 0) {
-        const mostRecentTimeHeading = timeHeadings[timeHeadings.length - 1];
-        const relativeTime = mostRecentTimeHeading.textContent.trim();
-        logToBackground(`Most recent time heading: ${relativeTime}`);
-        
-        const lastMessageDate = parseLinkedInDate(relativeTime);
-        
-        if (lastMessageDate) {
-            const daysSinceLastMessage = (Date.now() - lastMessageDate.getTime()) / (1000 * 60 * 60 * 24);
-            logToBackground(`Days since last message: ${daysSinceLastMessage}`);
-            return daysSinceLastMessage < 30; // Consider messages sent within the last 30 days as recent
-        }
+    const lastMessageDate = parseLinkedInDate(relativeTime);
+    
+    if (lastMessageDate) {
+      const currentDate = new Date();
+      const timeDifference = currentDate - lastMessageDate;
+      const daysDifference = timeDifference / (1000 * 60 * 60 * 24);
+      
+      logToBackground(`Last message date: ${lastMessageDate.toDateString()}`);
+      logToBackground(`Days since last message: ${daysDifference.toFixed(2)}`);
+      
+      if (daysDifference < 90) {
+        logToBackground('A message was sent within the last 90 days');
+        return true;
+      }
+    } else {
+      logToBackground(`Unable to parse date: ${relativeTime}`);
     }
-    
-    logToBackground('No recent messages found');
-    return false;
+  }
+  
+  logToBackground('No messages found within the last 90 days');
+  return false;
 }
 
 // Updated closeAllMessagePanels function
@@ -212,7 +222,7 @@ const closeAllMessagePanels = async () => {
     
     for (const panel of messagePanels) {
         logToBackground('Searching for close button in panel');
-        const svgUse = panel.querySelector("button > svg > use[href='#close-small']");
+        const svgUse = panel.querySelector(SELECTORS.CLOSE_BUTTON);
         if (svgUse) {
             const closeButton = svgUse.closest('button');
             if (closeButton) {
@@ -235,48 +245,56 @@ const closeAllMessagePanels = async () => {
     logToBackground(`Final check: ${finalCheck.length} panels remaining.`);
 };
 
-// Function for sending messages to connections
+// Update the sendMessage function to use the new wasMessageRecentlySent check
 const sendMessage = async (data) => {
-    logToBackground(`Starting sendMessage function for ${data.firstName}`, data);
+    logToBackground('Starting sendMessage function');
 
-    // Close any existing message panels before starting
-    await closeAllMessagePanels();
-
-    logToBackground('Looking for send message button');
-    const sendButton = await waitForElm(SELECTORS.CONNECTIONS_BUTTON);
-    if (sendButton) {
-        logToBackground('Send message button found. Clicking it.');
-        sendButton.click();
-    } else {
-        logToBackground('Send message button not found');
-        chrome.runtime.sendMessage({ type: "skip-error", reason: "Send message button not found" });
-        return "Next";
-    }
-
-    logToBackground('Waiting for message panel to appear');
-    const inputElement = await waitForElm(SELECTORS.MESSAGE_PANEL, 5000);
-    if (!inputElement) {
-        logToBackground("Message panel not found. Skipping to the next profile.");
-        chrome.runtime.sendMessage({ type: "skip-error", reason: "Message panel not found" });
-        return "Next";
-    }
-    logToBackground('Message panel found');
-
-    logToBackground('Checking for existing conversation');
+    // Check if a message was sent recently
     if (wasMessageRecentlySent()) {
-        logToBackground(`A message was sent to ${data.firstName} within the last 30 days. Skipping.`);
-        chrome.runtime.sendMessage({ 
-            type: "message-skipped", 
-            reason: "Recent message",
-            lastMessageDate: new Date().toLocaleDateString()
-        });
-        await closeAllMessagePanels();
+        logToBackground('A message was sent within the last 90 days. Skipping this contact.');
         return "Skipped";
     }
 
-    logToBackground('Preparing to send message');
-    document.querySelector(".msg-form__placeholder")?.remove();
+    // First, try to find and click the "Message" button
+    const messageButton = await waitForElm(SELECTORS.MESSAGE_BUTTON, 10000);
+    if (messageButton) {
+        logToBackground('Message button found, clicking it');
+        messageButton.click();
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for panel to open
+    } else {
+        logToBackground('Message button not found');
+        return "Failed";
+    }
+
+    // Now look for the message input
+    const inputElement = await waitForElm(SELECTORS.MESSAGE_INPUT, 10000);
+    if (!inputElement) {
+        logToBackground('Message panel not found');
+        return "Failed";
+    }
+    logToBackground('Message panel found');
+
+    // Focus and click the editor
     inputElement.focus();
+    inputElement.click();
+    logToBackground('Focused and clicked the editor');
+
+    // Wait a bit to ensure the editor is ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verify the editor is active
+    if (document.activeElement !== inputElement) {
+        logToBackground('Editor is not the active element. Attempting to focus again.');
+        inputElement.focus();
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Clear existing content
+    document.execCommand('selectAll', false, null);
+    document.execCommand('delete', false, null);
+    logToBackground('Cleared existing content');
+
+    // Prepare message content
     const messageContent = data.messageTemplate
         .replace('{originConnectionName}', data.originFullName)
         .replace('{profileName}', data.firstName)
@@ -285,47 +303,74 @@ const sendMessage = async (data) => {
         .replace('{jobTitle}', data.jobTitle)
         .replace('{connectionLinkedInUrl}', data.connectionLinkedInUrl);
 
-    logToBackground(`Message content: ${messageContent}`);
-    inputElement.textContent = messageContent;
+    // Simulate typing
+    for (let i = 0; i < messageContent.length; i++) {
+        document.execCommand('insertText', false, messageContent[i]);
+        
+        // Create and dispatch input event
+        const inputEvent = new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: messageContent[i]
+        });
+        inputElement.dispatchEvent(inputEvent);
+        
+        // Small delay between "keystrokes"
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
     logToBackground('Message content inserted');
 
-    return new Promise((resolve) => {
-        setTimeout(async () => {
-            logToBackground('Clicking send button');
-            const sendButton = document.querySelector(SELECTORS.SEND_BUTTON);
-            if (sendButton) {
-                sendButton.click();
-                logToBackground('Send button clicked');
-                
-                if (wasMessageRecentlySent()) {
-                    logToBackground(`Message sent to ${data.firstName}`);
-                    chrome.runtime.sendMessage({ 
-                        type: "message-sent", 
-                        recipient: data.firstName,
-                        date: new Date().toLocaleDateString()
-                    });
-                    await closeAllMessagePanels();
-                    resolve("Done");
-                } else {
-                    logToBackground("Message not found after sending. Logging current DOM:");
-                    logToBackground(document.body.innerHTML);
-                    await closeAllMessagePanels();
-                    resolve("Failed");
-                }
-            } else {
-                logToBackground("Send button not found");
-                resolve("Failed");
-            }
-            // Close panels after sending or if failed
-            await closeAllMessagePanels();
-        }, TIMEOUTS.SEND_MESSAGE);
+    // Dispatch a final input event
+    const finalInputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
     });
+    inputElement.dispatchEvent(finalInputEvent);
+
+    // Wait for the send button to become enabled
+    let sendButton;
+    for (let i = 0; i < 40; i++) {  // Try for about 20 seconds
+        sendButton = document.querySelector(SELECTORS.SEND_BUTTON);
+        if (sendButton && !sendButton.disabled) {
+            logToBackground('Send button is enabled.');
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (!sendButton || sendButton.disabled) {
+        logToBackground('Send button did not become enabled within the timeout period');
+        await closeMessagePanel();
+        return "Failed";
+    }
+
+    logToBackground('Clicking send button');
+    sendButton.click();
+
+    // Wait a bit for the message to be sent
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    if (wasMessageRecentlySent()) {
+        logToBackground(`Message sent to ${data.firstName}`);
+        chrome.runtime.sendMessage({ 
+            type: "message-sent", 
+            recipient: data.firstName,
+            date: new Date().toLocaleDateString()
+        });
+        await closeMessagePanel();
+        return "Done";
+    } else {
+        logToBackground("Message not found after sending");
+        await closeMessagePanel();
+        return "Failed";
+    }
 };
 
 // Function to verify if a message was sent successfully
 const verifyMessageSent = () => {
     if (wasMessageRecentlySent()) {
-        const sentMessages = document.querySelectorAll('.msg-s-event-listitem__message-bubble');
+        const sentMessages = document.querySelectorAll(SELECTORS.MESSAGE_BUBBLE);
         if (sentMessages.length > 0) {
             const lastSentMessage = sentMessages[sentMessages.length - 1];
             return { success: true, content: lastSentMessage.textContent };
@@ -350,10 +395,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     sendResponse(await loadConnectionsAjax(request.pageNumber));
                     break;
                 case "send-message":
-                    logToBackground("Handling send-message request");
                     const result = await sendMessage(request.data);
-                    logToBackground(`Send message result: ${result}`);
-                    sendResponse(result);
+                    sendResponse({ result });
                     break;
                 case "verify-message-sent":
                     logToBackground("Handling verify-message-sent request");
@@ -381,3 +424,26 @@ const periodicCleanup = async () => {
 
 // Start the periodic cleanup
 periodicCleanup();
+
+// Updated closeMessagePanel function
+const closeMessagePanel = async () => {
+    const panel = document.querySelector('.msg-overlay-conversation-bubble');
+    if (panel) {
+        logToBackground('Searching for close button in panel');
+        const svgUse = panel.querySelector(SELECTORS.CLOSE_BUTTON);
+        if (svgUse) {
+            const closeButton = svgUse.closest('button');
+            if (closeButton) {
+                logToBackground('Close button found. Clicking it.');
+                closeButton.click();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for panel to close
+            } else {
+                logToBackground('Close button not found');
+            }
+        } else {
+            logToBackground('SVG use element not found');
+        }
+    } else {
+        logToBackground('No message panel found');
+    }
+};
