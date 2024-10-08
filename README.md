@@ -175,7 +175,7 @@ Contributions to improve LinkedIn Connection Manager are welcome. Please fork th
 
 ## License
 
-[Specify your license here, e.g., MIT License]
+This project is licensed under the terms of the MIT license.
 
 ## Disclaimer
 
