@@ -8,12 +8,13 @@ LinkedIn Connection Manager is a powerful Chrome extension designed to streamlin
 
 - **Profile Link Collection**: Easily add and manage LinkedIn profile URLs.
 - **Automated Connection Harvesting**: Collect connections from specified profiles with customizable limits.
-- **Customizable Message Templates**: Create and save message templates for various networking scenarios.
-- **Bulk Messaging**: Send personalized messages to collected connections automatically.
+- **Customizable Message Templates**: Create and save up to five message templates for various networking scenarios.
+- **Bulk Messaging**: Send personalized messages to collected connections automatically with random template selection.
 - **CSV Export**: Download collected connection data for external use or analysis.
 - **Process Control**: Pause, resume, or stop the collection and messaging processes at any time.
 - **Retry Mechanism**: Configurable retry attempts for failed operations.
 - **Status Logging**: Real-time status updates and detailed logging for all operations.
+- **Configurable Settings**: Fine-tune collection and messaging parameters to optimize performance and avoid detection.
 
 ## Installation
 
@@ -32,13 +33,13 @@ LinkedIn Connection Manager is a powerful Chrome extension designed to streamlin
 
 ### Collecting Connections
 
-1. Set the "Max links to collect per profile" in the Settings section.
+1. Configure the collection settings in the Settings section.
 2. Click the "Collect Links" button to start the process.
 3. Monitor the Status Log for progress updates.
 
 ### Creating Message Templates
 
-1. Select a predefined template or choose "Custom Template" from the dropdown.
+1. Select a template (Message 1-5) from the dropdown.
 2. Edit the message in the text area, using available placeholders for personalization.
 3. Click "Save Message" to store your template.
 
@@ -46,6 +47,7 @@ LinkedIn Connection Manager is a powerful Chrome extension designed to streamlin
 
 1. After collecting connections, use the modal dialog to initiate the messaging process.
 2. Choose "Send Messages" to start sending personalized messages to collected connections.
+3. The extension will randomly select from your saved templates for each message.
 
 ### Exporting Data
 
@@ -57,17 +59,30 @@ LinkedIn Connection Manager is a powerful Chrome extension designed to streamlin
 
 ## Placeholders for Message Templates
 
-- `{originConnectionName}`: The full name of the connection you want an intro to.
-- `{profileName}`: The first name of the mutual connection you're messaging.
-- `{fullName}`: The full name of the mutual connection you're messaging.
-- `{companyName}`: The company name of the connection you want an intro to.
-- `{jobTitle}`: The job title of the connection you want an intro to.
-- `{connectionLinkedInUrl}`: The LinkedIn profile URL of the connection you want an intro to.
+- `{originConnectionName}`: The full name of your direct connection (the person you're asking for an introduction)
+- `{originLinkedInUrl}`: The LinkedIn profile URL of your direct connection
+- `{profileName}`: The first name of the mutual connection you're trying to reach
+- `{fullName}`: The full name of the mutual connection you're trying to reach
+- `{companyName}`: The current company name of the mutual connection
+- `{jobTitle}`: The current job title of the mutual connection
+- `{connectionLinkedInUrl}`: The LinkedIn profile URL of the mutual connection you're trying to reach
 
 ## Configuration
 
-- Adjust the "Max links to collect per profile" and "Number of retry attempts" in the Settings section to customize the extension's behavior.
+Adjust the following settings in the extension popup:
 
+- Max links to collect per profile
+- Number of retry attempts
+- Collection interval (seconds)
+- Collection batch size
+- Collection pause time (minutes)
+- Messaging interval (seconds)
+- Messaging batch size
+- Messaging pause time (minutes)
+- Daily collection limit
+- Daily message limit
+
+These settings allow you to fine-tune the extension's behavior to match your networking strategy and to help avoid detection by LinkedIn's systems.
 
 ## Detailed Implementation Logic
 

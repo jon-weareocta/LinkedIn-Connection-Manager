@@ -171,6 +171,7 @@ const getConnectionsLinks = async (profile, maxLinks) => {
 
 // Message handlers for various extension operations
 const collectLinksHandler = async (message) => {
+  isRunning = true;
   console.log("Starting collectLinksHandler");
   const profiles = await getProfiles();
   const maxLinks = message.maxLinks || DEFAULT_MAX_LINKS;
@@ -178,13 +179,13 @@ const collectLinksHandler = async (message) => {
   
   let collectedLinksCount = 0;
 
-  for (let i = message.startIndex || 0; i < profiles.length; i++) {
-    if (isPaused) {
-      console.log("Collection paused");
-      break;
+  for (let profile of profiles) {
+    if (!isRunning) break;
+    while (isPaused) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    console.log(`Processing profile ${i + 1} of ${profiles.length}: ${profiles[i]}`);
-    await getConnectionsLinks(profiles[i], maxLinks);
+    console.log(`Processing profile ${profiles.indexOf(profile) + 1} of ${profiles.length}: ${profile}`);
+    await getConnectionsLinks(profile, maxLinks);
     collectedLinksCount += maxLinks; // This is an estimate, adjust if necessary
   }
 
@@ -204,23 +205,27 @@ const addLinkHandler = async (message) => {
   return "Done";
 };
 
-const sendMessagesHandler = async (messageTemplate) => {
+const sendMessagesHandler = async (messageTemplates) => {
+  isRunning = true;
   log("Starting sendMessagesHandler");
   let targets = await getTargets();
   log(`Found ${targets.length} targets to message`, targets);
 
-  for (let i = 0; i < targets.length; i++) {
-    if (isPaused) {
-      log("Messaging paused");
-      break;
+  for (let target of targets) {
+    if (!isRunning) break;
+    while (isPaused) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    let target = targets[i];
-    log(`Processing target ${i + 1} of ${targets.length}:`, target);
+    log(`Processing target ${targets.indexOf(target) + 1} of ${targets.length}:`, target);
 
     if (!target.connection || !target.connection.url || !target.connection.name) {
       log(`Skipping target due to missing data:`, target);
       continue;
     }
+
+    // Choose a random message template
+    const templateKeys = Object.keys(messageTemplates);
+    const randomTemplate = messageTemplates[templateKeys[Math.floor(Math.random() * templateKeys.length)]];
 
     log(`Opening tab for ${target.connection.url}`);
     let targetTab;
@@ -236,17 +241,15 @@ const sendMessagesHandler = async (messageTemplate) => {
       }
 
       const messageData = {
-        originFullName: target.origin,
-        originLinkedInUrl: target.connection.originUrl, // Change this line
         firstName: target.connection.name.split(' ')[0],
         fullName: target.connection.name,
-        companyName: target.companyName || "Unknown",
-        jobTitle: target.jobTitle || "Professional",
+        originFullName: target.origin,
+        originLinkedInUrl: target.originUrl,
+        companyName: target.companyName,
+        jobTitle: target.jobTitle,
         connectionLinkedInUrl: target.connection.url,
-        messageTemplate: messageTemplate
+        messageTemplate: randomTemplate
       };
-
-      log(`Prepared message data for ${target.connection.name}:`, messageData);
 
       log(`Sending message to content script for ${target.connection.name}`, messageData);
 
@@ -299,6 +302,7 @@ function log(message, data = null) {
 
 // State variables
 let isPaused = false;
+let isRunning = false;
 
 // Message listener for handling various message types
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -318,7 +322,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse("Done");
           break;
         case "send-messages":
-          await sendMessagesHandler(message.messageTemplate);
+          await sendMessagesHandler(message.messageTemplates);
           sendResponse("Messages sent");
           break;
         case "pause":
@@ -345,6 +349,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         case "log":
           log("Content script log:", message.message);
+          break;
+        case "stop":
+          isRunning = false;
+          isPaused = false;
+          // Reset any other necessary state variables
+          sendResponse("Done");
           break;
         default:
           log("Unknown message type:", message.type);

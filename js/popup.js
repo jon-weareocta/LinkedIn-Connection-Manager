@@ -4,17 +4,14 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // Load saved settings
-    loadMaxLinksSetting();
+    loadAllSettings();
     loadMessageTemplate();
-    loadRetryAttemptsSetting();
 
     // Update profile links
     updateProfileLinks();
 
     // Add event listeners
-    addEventListenerSafely('saveMaxLinks', 'click', handleSaveMaxLinksButtonClick);
     addEventListenerSafely('saveMessage', 'click', handleSaveMessageButtonClick);
-    addEventListenerSafely('saveRetryAttempts', 'click', handleSaveRetryAttemptsButtonClick);
     addEventListenerSafely('addLinks', 'click', handleAddButtonClick);
     addEventListenerSafely('collectLinks', 'click', handleCollectButtonClick);
     addEventListenerSafely('clearData', 'click', handleClearButtonClick);
@@ -23,6 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
     addEventListenerSafely('modalCollectMore', 'click', handleCollectButtonClick);
     addEventListenerSafely('modalClose', 'click', closeModal);
     addEventListenerSafely('templateSelect', 'change', handleTemplateSelection);
+    addEventListenerSafely('pauseButton', 'click', handlePauseButtonClick);
+    addEventListenerSafely('continueButton', 'click', handleContinueButtonClick);
+    addEventListenerSafely('stopButton', 'click', handleStopButtonClick);
+    addEventListenerSafely('saveSettings', 'click', saveSettings);
 
     // Initialize template selection
     initializeTemplateSelection();
@@ -71,34 +72,58 @@ function updateProfileLinks() {
 }
 
 // Load the message template from storage
-function loadMessageTemplate() {
-    chrome.storage.local.get(['selectedTemplate', 'customTemplate', 'messageTemplate'], result => {
-        const messageTextarea = document.querySelector("#messageTemplate");
-        const templateSelect = document.getElementById('templateSelect');
-        
-        if (result.selectedTemplate) {
-            templateSelect.value = result.selectedTemplate;
-            if (result.selectedTemplate === 'custom') {
-                messageTextarea.value = result.customTemplate || result.messageTemplate || "";
-            } else {
-                messageTextarea.value = getTemplateContent(result.selectedTemplate);
-            }
+async function loadMessageTemplate() {
+    const { selectedTemplate, messageTemplates } = await chrome.storage.local.get(['selectedTemplate', 'messageTemplates']);
+    const messageTextarea = document.querySelector("#messageTemplate");
+    const templateSelect = document.getElementById('templateSelect');
+    
+    if (selectedTemplate) {
+        templateSelect.value = selectedTemplate;
+        if (selectedTemplate === 'custom') {
+            messageTextarea.value = messageTemplates?.custom || "";
         } else {
-            messageTextarea.value = result.messageTemplate || "";
+            messageTextarea.value = messageTemplates?.[selectedTemplate] || getTemplateContent(selectedTemplate);
         }
-    });
+    } else {
+        messageTextarea.value = messageTemplates?.["Message 1"] || getTemplateContent("Message 1");
+    }
 }
 
-// Load the max links setting from storage
-function loadMaxLinksSetting() {
-  chrome.storage.local.get(['maxLinks'], result => {
-    const maxLinksInput = document.querySelector("#maxLinks");
-    if (maxLinksInput) {
-        maxLinksInput.value = result.maxLinks || 2;
-    } else {
-        console.warn("Element with id 'maxLinks' not found");
+// Load all settings from storage
+async function loadAllSettings() {
+    const { settings } = await chrome.storage.local.get('settings');
+    if (settings) {
+        document.getElementById('maxLinks').value = settings.maxLinks || 2;
+        document.getElementById('retryAttempts').value = settings.retryAttempts || 3;
+        document.getElementById('collectionInterval').value = settings.collectionInterval || 30;
+        document.getElementById('collectionBatchSize').value = settings.collectionBatchSize || 10;
+        document.getElementById('collectionPauseTime').value = settings.collectionPauseTime || 5;
+        document.getElementById('messagingInterval').value = settings.messagingInterval || 60;
+        document.getElementById('messagingBatchSize').value = settings.messagingBatchSize || 5;
+        document.getElementById('messagingPauseTime').value = settings.messagingPauseTime || 15;
+        document.getElementById('dailyCollectionLimit').value = settings.dailyCollectionLimit || 100;
+        document.getElementById('dailyMessageLimit').value = settings.dailyMessageLimit || 50;
     }
-  });
+}
+
+// Save all settings to storage
+async function saveSettings() {
+    const settings = {
+        maxLinks: parseInt(document.getElementById('maxLinks').value),
+        retryAttempts: parseInt(document.getElementById('retryAttempts').value),
+        collectionInterval: parseInt(document.getElementById('collectionInterval').value),
+        collectionBatchSize: parseInt(document.getElementById('collectionBatchSize').value),
+        collectionPauseTime: parseInt(document.getElementById('collectionPauseTime').value),
+        messagingInterval: parseInt(document.getElementById('messagingInterval').value),
+        messagingBatchSize: parseInt(document.getElementById('messagingBatchSize').value),
+        messagingPauseTime: parseInt(document.getElementById('messagingPauseTime').value),
+        dailyCollectionLimit: parseInt(document.getElementById('dailyCollectionLimit').value),
+        dailyMessageLimit: parseInt(document.getElementById('dailyMessageLimit').value)
+    };
+
+    await chrome.storage.local.set({ settings });
+    updateStatus("All settings saved successfully.");
+    logStatus("Updated extension settings.");
 }
 
 // Handle the add button click event
@@ -126,14 +151,26 @@ async function handleAddButtonClick(evt) {
 
 // Handle the collect button click event
 async function handleCollectButtonClick(evt) {
-  evt.preventDefault(); // Prevent default form submission
-  const maxLinks = document.querySelector("#maxLinks").value;
-  fireWorkerEvent({
-    type: "collect-links",
-    maxLinks: parseInt(maxLinks)
-  });
-  updateStatus("Collecting links...");
-  logStatus("Started collecting links.");
+    evt.preventDefault();
+    chrome.storage.local.get(['settings', 'userProfileLinks'], async (result) => {
+        const settings = result.settings || {};
+        const maxLinks = settings.maxLinks || 2;
+        const retryAttempts = settings.retryAttempts || 3;
+        const profileLinks = result.userProfileLinks || [];
+        
+        if (profileLinks.length === 0) {
+            updateStatus("No profile links added. Please add links before collecting.");
+            return;
+        }
+
+        updateStatus("Starting collection process...");
+        chrome.runtime.sendMessage({
+            type: "collect-links",
+            profileLinks: profileLinks,
+            maxLinks: maxLinks,
+            retryAttempts: retryAttempts
+        });
+    });
 }
 
 // Handle the clear button click event
@@ -158,14 +195,22 @@ async function handleSaveMessageButtonClick(evt) {
     const templateSelect = document.getElementById('templateSelect');
     const selectedTemplate = templateSelect.value;
 
+    let templates = await chrome.storage.local.get('messageTemplates');
+    templates = templates.messageTemplates || {};
+
+    if (selectedTemplate === 'custom') {
+        templates.custom = messageTemplate;
+    } else {
+        templates[selectedTemplate] = messageTemplate;
+    }
+
     await chrome.storage.local.set({ 
-        messageTemplate: messageTemplate,
-        selectedTemplate: selectedTemplate,
-        customTemplate: selectedTemplate === 'custom' ? messageTemplate : null
+        messageTemplates: templates,
+        selectedTemplate: selectedTemplate
     });
 
     updateStatus("Message template saved.");
-    logStatus("Message template saved.");
+    logStatus(`Saved message template: ${selectedTemplate}`);
 }
 
 // Handle the stop button click event
@@ -202,60 +247,72 @@ async function handleContinueButtonClick(evt) {
   logStatus("Continued operations.");
 }
 
-// Handle the save max links button click event
-async function handleSaveMaxLinksButtonClick(evt) {
-  evt.preventDefault(); // Prevent default form submission
-  const maxLinks = document.querySelector("#maxLinks").value;
-  await chrome.storage.local.set({ maxLinks: parseInt(maxLinks) });
-  updateStatus("Max links setting saved.");
-  logStatus(`Max links setting saved: ${maxLinks}`);
-}
-
 // Handle the download CSV button click event
 async function handleDownloadCSVButtonClick(evt) {
-  evt.preventDefault();
-  chrome.storage.local.get(["targetProfiles"], result => {
-    const targets = result.targetProfiles || [];
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Profile Name,Profile LinkedIn URL,Connection Name,Connection LinkedIn URL,Company Name,Status\n";
+    evt.preventDefault();
+    updateStatus("Preparing CSV download...");
+    logStatus("Initiating CSV download.");
 
-    targets.forEach(target => {
-      const profileName = target.origin || "Unknown";
-      const profileUrl = target.connection.originUrl || "Unknown";
-      const connectionName = target.connection.name || "Unknown";
-      const connectionUrl = target.connection.url || "Unknown";
-      const companyName = target.companyName || "Unknown";
-      const status = target.status || "Pending";
-      csvContent += `${profileName},${profileUrl},${connectionName},${connectionUrl},${companyName},${status}\n`;
-    });
+    try {
+        const { targetProfiles } = await chrome.storage.local.get('targetProfiles');
+        
+        if (!targetProfiles || targetProfiles.length === 0) {
+            updateStatus("No data to download.");
+            logStatus("CSV download failed: No data available.");
+            return;
+        }
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "linkedin_connections.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Name,LinkedIn URL,Company,Job Title,Origin Connection,Origin URL\n";
 
-    updateStatus("CSV file downloaded.");
-    logStatus("Downloaded CSV file.");
-  });
+        targetProfiles.forEach(profile => {
+            const row = [
+                profile.connection.name,
+                profile.connection.url,
+                profile.companyName,
+                profile.jobTitle,
+                profile.origin,
+                profile.originUrl
+            ].map(field => `"${field}"`).join(',');
+            csvContent += row + "\n";
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "linkedin_connections.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        updateStatus("CSV downloaded successfully.");
+        logStatus("CSV file generated and downloaded.");
+    } catch (error) {
+        console.error("Error generating CSV:", error);
+        updateStatus("Error generating CSV. Please try again.");
+        logStatus("CSV download failed: " + error.message);
+    }
 }
 
 // Handle send messages button click
 async function handleSendMessages() {
-  closeModal();
-  updateStatus("Preparing to send messages...");
-  logStatus("User opted to send messages.");
+    closeModal();
+    updateStatus("Preparing to send messages...");
+    logStatus("User opted to send messages.");
 
-  // Fetch the message template
-  const messageTemplate = await getMessageTemplate();
+    chrome.storage.local.get(['settings', 'messageTemplates'], async (result) => {
+        const settings = result.settings || {};
+        const messageTemplates = result.messageTemplates || getDefaultTemplates();
 
-  // Send message request with the template
-  chrome.runtime.sendMessage({
-    type: "send-messages",
-    messageTemplate: messageTemplate
-  });
+        chrome.runtime.sendMessage({
+            type: "send-messages",
+            messageTemplates: messageTemplates,
+            messagingInterval: settings.messagingInterval,
+            messagingBatchSize: settings.messagingBatchSize,
+            messagingPauseTime: settings.messagingPauseTime,
+            dailyMessageLimit: settings.dailyMessageLimit
+        });
+    });
 }
 
 // Open modal dialog
@@ -339,18 +396,17 @@ function initializeTemplateSelection() {
 }
 
 // Handle template selection change
-function handleTemplateSelection(event) {
+async function handleTemplateSelection(event) {
     const selectedTemplate = event.target.value;
     const messageTextarea = document.getElementById('messageTemplate');
 
+    let templates = await chrome.storage.local.get('messageTemplates');
+    templates = templates.messageTemplates || {};
+
     if (selectedTemplate === 'custom') {
-        // Load custom template if it exists
-        chrome.storage.local.get(['customTemplate'], result => {
-            messageTextarea.value = result.customTemplate || '';
-        });
+        messageTextarea.value = templates.custom || '';
     } else {
-        // Load predefined template
-        messageTextarea.value = getTemplateContent(selectedTemplate);
+        messageTextarea.value = templates[selectedTemplate] || getTemplateContent(selectedTemplate);
     }
 
     // Save the selected template
@@ -360,58 +416,49 @@ function handleTemplateSelection(event) {
 // Get template content based on selection
 function getTemplateContent(templateName) {
     const templates = {
-        networking: `Hi {profileName},
+        "Message 1": `Hey {profileName},
 
-Hope you're well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask a quick favor. I'm currently working on expanding my professional network in the {jobTitle} field, particularly in companies like {companyName}.
+I hope all's well. I noticed you're connected with {originConnectionName} ({originLinkedInUrl}) and wondered if you could help me out. We just closed a round with Sanabil and 500 Global for OCTA. Our platform helps companies like Careem speed up collections, access financing, and recover debt—bringing down collection times by 35%.
 
-Would you be open to introducing us? I believe a conversation with {originConnectionName} could provide valuable insights into the industry.
+Would you be open to an intro? I think we'd be a great fit.
 
-Thanks in advance!
+Thanks a ton,
 [Your Name]`,
 
-        jobInquiry: `Hi {profileName},
+        "Message 2": `Hi {profileName},
 
-Hope this message finds you well. I saw that you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to reach out for a small favor. I'm exploring new career opportunities in the {jobTitle} role, and {originConnectionName}'s experience at {companyName} really caught my attention.
+Hope you're doing great. I saw your connection with {originConnectionName} ({originLinkedInUrl}) and thought you might be able to assist. We've recently secured funding from Sanabil and 500 Global for OCTA, our platform that's helping businesses like Careem streamline their accounts receivable, get financing, and improve debt recovery—reducing collection times by 35%.
 
-Would you be willing to introduce us? I'm keen to learn more about their journey and potentially explore any opportunities at {companyName}.
+Would you mind introducing us? I believe we could add significant value.
 
-Thank you for considering my request!
+Really appreciate your help,
 [Your Name]`,
 
-        collaboration: `Hi {profileName},
+        "Message 3": `Hello {profileName},
 
-I hope you're doing well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for your help. My team is working on an innovative project in the field of {jobTitle}, and we believe {originConnectionName}'s expertise at {companyName} could be invaluable.
+Trust this finds you well. I noticed you're linked with {originConnectionName} ({originLinkedInUrl}) and was hoping for a quick favor. OCTA, our company, just raised a round from Sanabil and 500 Global. We're focused on helping companies such as Careem optimize their collections, secure financing, and manage debt recovery—we've seen collection times drop by 35%.
 
-Would you be open to introducing us? I think there could be some exciting collaboration opportunities to explore.
+Any chance you'd be willing to make an introduction? I think there's a great potential fit here.
 
-Thanks so much for your consideration!
+Thanks in advance,
 [Your Name]`,
 
-        eventFollowUp: `Hi {profileName},
+        "Message 4": `Hey there {profileName},
 
-I hope this message finds you well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask a quick favor. I recently attended [Event Name] and learned about the great work {originConnectionName} is doing as a {jobTitle} at {companyName}.
+I hope you're having a good day. I couldn't help but notice your connection with {originConnectionName} ({originLinkedInUrl}) and wanted to reach out for a small request. We've recently closed funding with Sanabil and 500 Global for our company, OCTA. Our solution is helping businesses like Careem accelerate their collections, access needed financing, and improve debt recovery—we're seeing collection times reduced by 35%.
 
-Would you be willing to introduce us? I'm eager to discuss some of the insights shared at the event and explore potential synergies.
+Would you be open to connecting us? I believe we could provide substantial value.
 
-Thank you in advance for your help!
+Many thanks for considering,
 [Your Name]`,
 
-        newCompany: `Hi {profileName},
+        "Message 5": `Hi {profileName},
 
-Hope you're doing well. I saw that you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for a small favor. I've recently launched a new company that's focused on [brief description], and given {originConnectionName}'s experience as a {jobTitle} at {companyName}, I believe their insights could be extremely valuable.
+I hope this message finds you well. I saw that you're connected to {originConnectionName} ({originLinkedInUrl}) and was wondering if I could ask for your assistance. We've just secured funding from Sanabil and 500 Global for OCTA, our platform that's revolutionizing how companies like Careem handle their accounts receivable, obtain financing, and recover debt—we're proud to say we're cutting collection times by 35%.
 
-Would you be open to introducing us? I'd love to share more about our venture and explore how we might add value to their work.
+Would you be willing to make an introduction? I think there could be a great opportunity for collaboration.
 
-Thanks so much for considering this!
-[Your Name]`,
-
-        offeringService: `Hi {profileName},
-
-I hope this message finds you well. I noticed you're connected with {originConnectionName} - {originLinkedInUrl}, and I wanted to ask for your help. My company has developed a service that's particularly beneficial for {jobTitle} professionals, and I believe it could add significant value to {originConnectionName}'s work at {companyName}.
-
-Would you be willing to introduce us? I'd love the opportunity to discuss how we might be able to support their efforts.
-
-Thank you in advance for your consideration!
+Thank you so much for your time,
 [Your Name]`
     };
 
@@ -430,4 +477,42 @@ function showCollectionCompleteModal(count) {
     } else {
         console.error("Modal element not found");
     }
+}
+
+// Add this helper function to get default templates
+function getDefaultTemplates() {
+    return {
+        "Message 1": getTemplateContent("Message 1"),
+        "Message 2": getTemplateContent("Message 2"),
+        "Message 3": getTemplateContent("Message 3"),
+        "Message 4": getTemplateContent("Message 4"),
+        "Message 5": getTemplateContent("Message 5")
+    };
+}
+
+function handlePauseButtonClick() {
+  chrome.runtime.sendMessage({ type: "pause" }, (response) => {
+    if (response === "Done") {
+      updateStatus("Process paused.");
+      logStatus("Collection process paused.");
+    }
+  });
+}
+
+function handleContinueButtonClick() {
+  chrome.runtime.sendMessage({ type: "continue" }, (response) => {
+    if (response === "Done") {
+      updateStatus("Process resumed.");
+      logStatus("Collection process resumed.");
+    }
+  });
+}
+
+function handleStopButtonClick() {
+  chrome.runtime.sendMessage({ type: "stop" }, (response) => {
+    if (response === "Done") {
+      updateStatus("Process stopped.");
+      logStatus("Collection process stopped.");
+    }
+  });
 }

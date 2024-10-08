@@ -191,6 +191,40 @@
                 margin-right: 0;
             }
         }
+
+        .setting-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            flex: 1 1 200px;
+        }
+
+        .setting-item label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .setting-item input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .setting-group {
+                flex-direction: column;
+            }
+
+            .setting-item {
+                flex: 1 1 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -210,16 +244,62 @@
 
         <div class="section">
             <h2>Settings</h2>
-            <div>
-                <label for="maxLinks">Max links to collect per profile:</label>
-                <input type="number" id="maxLinks" min="1" value="2">
-                <button id="saveMaxLinks" class="icon-button"><i class="fas fa-save"></i> Save</button>
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="maxLinks">Max links to collect per profile:</label>
+                    <input type="number" id="maxLinks" min="1" value="2">
+                </div>
+                <div class="setting-item">
+                    <label for="retryAttempts">Number of retry attempts:</label>
+                    <input type="number" id="retryAttempts" min="1" max="10" value="3">
+                </div>
             </div>
-            <div>
-                <label for="retryAttempts">Number of retry attempts:</label>
-                <input type="number" id="retryAttempts" min="1" max="10" value="3">
-                <button id="saveRetryAttempts" class="icon-button"><i class="fas fa-save"></i> Save</button>
+            
+            <h3>Collection Settings</h3>
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="collectionInterval">Interval between profile collections (seconds):</label>
+                    <input type="number" id="collectionInterval" min="5" value="30">
+                </div>
+                <div class="setting-item">
+                    <label for="collectionBatchSize">Profiles to process before pausing:</label>
+                    <input type="number" id="collectionBatchSize" min="1" value="10">
+                </div>
+                <div class="setting-item">
+                    <label for="collectionPauseTime">Pause duration after batch (minutes):</label>
+                    <input type="number" id="collectionPauseTime" min="1" value="5">
+                </div>
             </div>
+
+            <h3>Messaging Settings</h3>
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="messagingInterval">Interval between messages (seconds):</label>
+                    <input type="number" id="messagingInterval" min="30" value="60">
+                </div>
+                <div class="setting-item">
+                    <label for="messagingBatchSize">Messages to send before pausing:</label>
+                    <input type="number" id="messagingBatchSize" min="1" value="5">
+                </div>
+                <div class="setting-item">
+                    <label for="messagingPauseTime">Pause duration after batch (minutes):</label>
+                    <input type="number" id="messagingPauseTime" min="5" value="15">
+                </div>
+            </div>
+
+            <h3>Daily Limits</h3>
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="dailyCollectionLimit">Max profiles to collect per day:</label>
+                    <input type="number" id="dailyCollectionLimit" min="1" value="100">
+                </div>
+                <div class="setting-item">
+                    <label for="dailyMessageLimit">Max messages to send per day:</label>
+                    <input type="number" id="dailyMessageLimit" min="1" value="50">
+                </div>
+            </div>
+
+            <button id="saveSettings" class="icon-button"><i class="fas fa-save"></i> Save All Settings</button>
         </div>
 
         <div class="section">
@@ -245,13 +325,11 @@
             <div class="template-selection">
                 <label for="templateSelect">Choose a template:</label>
                 <select id="templateSelect">
-                    <option value="custom">Custom Template</option>
-                    <option value="networking">Networking</option>
-                    <option value="jobInquiry">Job Inquiry</option>
-                    <option value="collaboration">Collaboration Proposal</option>
-                    <option value="eventFollowUp">Event Follow-up</option>
-                    <option value="newCompany">New Company Announcement</option>
-                    <option value="offeringService">Offering a Service</option>
+                    <option value="Message 1">Message 1</option>
+                    <option value="Message 2">Message 2</option>
+                    <option value="Message 3">Message 3</option>
+                    <option value="Message 4">Message 4</option>
+                    <option value="Message 5">Message 5</option>
                 </select>
             </div>
             <textarea id="messageTemplate" rows="10" placeholder="Enter your message template here"></textarea>
